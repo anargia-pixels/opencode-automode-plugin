@@ -201,8 +201,9 @@ config. Use `--case <id>`, `--model <provider/model>`, `--keep`, and
 
 ### Releasing
 
-CI runs typecheck, tests, and the build on every push to `master` and on pull
-requests. To release:
+CI runs typecheck, tests, the build, and a package check only for release
+tags (`v*`), not on every push. Run `bun run typecheck && bun run test` locally
+before you release. To release:
 
 1. Bump `version` in `package.json` and push the commit.
 2. Publish a GitHub release whose tag is `v` plus that version, such as
