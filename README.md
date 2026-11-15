@@ -199,6 +199,18 @@ config. Use `--case <id>`, `--model <provider/model>`, `--keep`, and
 `--timeout <seconds>`. Results, including each case's decision log, go to
 `evals/results/`. The eval spends model tokens.
 
+### Releasing
+
+CI runs typecheck, tests, and the build on every push to `master` and on pull
+requests. To release:
+
+1. Bump `version` in `package.json` and push the commit.
+2. Publish a GitHub release whose tag is `v` plus that version, such as
+   `gh release create v0.2.0 --generate-notes`.
+
+The `Publish` workflow then publishes to npm with trusted publishing, so no
+npm token is stored in GitHub, and npm shows a provenance attestation.
+
 Layout:
 
 ```text
