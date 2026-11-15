@@ -1,4 +1,4 @@
-import type { CommandInput, Verdict } from "./classifier";
+import type { Verdict } from "./classifier";
 
 // Types
 
@@ -6,10 +6,10 @@ export type EvaluationResult =
   | { readonly ok: true; readonly verdict: Verdict }
   | { readonly ok: false; readonly error: string };
 
-/** Judges one command. Throws on failure. */
-export type CommandQuery = (input: CommandInput) => Promise<Verdict>;
+/** Judges one prompt context. Throws on failure. */
+export type ContextQuery = (context: string) => Promise<Verdict>;
 
-export interface CommandEvaluatorOptions {
+export interface EvaluatorOptions {
   readonly cacheTtlMs: number;
   readonly maxCacheEntries: number;
 }
@@ -22,58 +22,53 @@ interface CacheEntry {
 // Evaluator
 
 /**
- * Evaluate commands with a small TTL cache.
+ * Evaluate actions with a small TTL cache keyed by the full prompt context.
  *
- * Cache keys include the directory, the user messages, and recent blocks, because the same
- * command can be fine in one place or for one request and not another.
- * Failures are never cached, so a transient model error does not stick.
+ * The context holds the action, transcript, directory, and recent blocks, so
+ * a hit means the classifier would see exactly the same thing. Requests in
+ * flight are shared, and failures are never cached.
  */
-export class CommandEvaluator {
+export class Evaluator {
   private readonly cache = new Map<string, CacheEntry>();
   private readonly inflight = new Map<string, Promise<EvaluationResult>>();
 
   constructor(
-    private readonly query: CommandQuery,
-    private readonly options: CommandEvaluatorOptions,
+    private readonly query: ContextQuery,
+    private readonly options: EvaluatorOptions,
   ) {}
 
-  /** Judge one command. Reuses a fresh cached verdict or a request in flight. */
-  async evaluate(input: CommandInput): Promise<EvaluationResult> {
-    const key = cacheKey(input);
-    const cached = this.cache.get(key);
+  /** Judge one context. Reuses a fresh cached verdict or a request in flight. */
+  async evaluate(context: string): Promise<EvaluationResult> {
+    const cached = this.cache.get(context);
     if (cached !== undefined && cached.expiresAt > Date.now()) {
       // Move the entry to the end so that eviction removes the least recent.
-      this.cache.delete(key);
-      this.cache.set(key, cached);
+      this.cache.delete(context);
+      this.cache.set(context, cached);
       return cached.result;
     }
 
-    const pending = this.inflight.get(key);
+    const pending = this.inflight.get(context);
     if (pending !== undefined) return pending;
 
-    const promise = this.run(input)
+    const promise = this.run(context)
       .then((result) => {
-        if (result.ok) this.store(key, result);
+        if (result.ok) this.store(context, result);
         return result;
       })
       .finally(() => {
-        this.inflight.delete(key);
+        this.inflight.delete(context);
       });
-    this.inflight.set(key, promise);
+    this.inflight.set(context, promise);
     return promise;
   }
 
-  /** Query the classifier, retrying once on failure. Never throws. */
-  private async run(input: CommandInput): Promise<EvaluationResult> {
-    let lastError = "";
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      try {
-        return { ok: true, verdict: await this.query(input) };
-      } catch (error) {
-        lastError = error instanceof Error ? error.message : String(error);
-      }
+  /** Query the classifier. Never throws. */
+  private async run(context: string): Promise<EvaluationResult> {
+    try {
+      return { ok: true, verdict: await this.query(context) };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
     }
-    return { ok: false, error: lastError };
   }
 
   /** Cache a result and evict the oldest entries above the size limit. */
@@ -86,15 +81,4 @@ export class CommandEvaluator {
       this.cache.delete(oldest);
     }
   }
-}
-
-/** Cache key for a command in its directory, for the current user request. */
-function cacheKey(input: CommandInput): string {
-  return [
-    input.cwd,
-    input.description ?? "",
-    input.userMessages.join("\u0001"),
-    (input.recentBlocks ?? []).join("\u0001"),
-    input.command,
-  ].join("\u0000");
 }

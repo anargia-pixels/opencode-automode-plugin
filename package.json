@@ -1,6 +1,6 @@
 {
   "name": "@anargia-pixels/opencode-automode",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Auto mode for opencode: a fast LLM classifier (DeepSeek V4.1 Flash on OpenCode Go) approves safe shell commands and blocks risky ones, so the agent keeps working without permission prompts.",
   "keywords": [
     "opencode",
@@ -39,6 +39,7 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "bun test",
     "probe": "bun run scripts/probe.ts",
+    "bench": "bun run scripts/bench.ts",
     "eval": "bun run scripts/eval.ts",
     "prepublishOnly": "bun run typecheck && bun run test && bun run build"
   },
