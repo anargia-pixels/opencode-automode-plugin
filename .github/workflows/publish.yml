@@ -1,14 +1,24 @@
 name: Publish
 
-# Publishes to npm when a GitHub release is published. Uses npm trusted
-# publishing (OIDC), so no npm token is stored in this repository.
+# Publishes the built plugin to the `release` branch when a GitHub release is
+# published, so opencode can install it straight from GitHub:
+#
+#   opencode plugin add github:anargia-pixels/opencode-automode-plugin#release
+#
+# opencode's installer cannot run build steps for Git packages, so the branch
+# holds the built `dist/` and a package.json without scripts or dev
+# dependencies. Each release also gets a `dist-vX.Y.Z` tag for pinning.
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 permissions:
-  contents: read
-  id-token: write # lets npm verify this workflow and attach provenance
+  contents: write # push the release branch and dist tag
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
 
 jobs:
   publish:
@@ -16,19 +26,40 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          registry-url: https://registry.npmjs.org
-      # Trusted publishing needs npm 11.5.1 or newer.
-      - run: npm install -g npm@latest
       - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun run test
+      - run: bun run build
       - name: Check that the release tag matches package.json
+        if: github.event_name == 'release'
         run: |
-          version="v$(node -p 'require("./package.json").version')"
+          version="v$(bun -e 'console.log(require("./package.json").version)')"
           if [ "$version" != "$GITHUB_REF_NAME" ]; then
             echo "Release tag $GITHUB_REF_NAME does not match package.json $version"
             exit 1
           fi
-      # prepublishOnly runs typecheck, tests, and the build.
-      - run: npm publish
+      - name: Assemble the installable package
+        run: |
+          mkdir -p "$RUNNER_TEMP/pkg"
+          cp -r dist README.md LICENSE "$RUNNER_TEMP/pkg/"
+          bun -e '
+            const p = require("./package.json");
+            delete p.scripts;
+            delete p.devDependencies;
+            await Bun.write(process.argv[1], JSON.stringify(p, null, 2) + "\n");
+          ' "$RUNNER_TEMP/pkg/package.json"
+      - name: Push the release branch and dist tag
+        working-directory: ${{ runner.temp }}/pkg
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="v$(bun -e 'console.log(require("./package.json").version)')"
+          git init -q -b release
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Release $version (built from $GITHUB_SHA)"
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push -f "$remote" HEAD:refs/heads/release
+          git tag "dist-$version"
+          git push -f "$remote" "refs/tags/dist-$version"

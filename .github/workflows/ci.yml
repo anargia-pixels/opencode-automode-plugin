@@ -22,5 +22,23 @@ jobs:
       - run: bun run typecheck
       - run: bun run test
       - run: bun run build
-      - name: Check the package contents
-        run: npm pack --dry-run
+      # Same shape as the release branch the Publish workflow pushes: built
+      # dist, no scripts or dev dependencies. opencode must be able to load it.
+      - name: Check the installable package
+        run: |
+          pkg="$RUNNER_TEMP/pkg"
+          mkdir -p "$pkg"
+          cp -r dist README.md LICENSE "$pkg/"
+          bun -e '
+            const p = require("./package.json");
+            delete p.scripts;
+            delete p.devDependencies;
+            await Bun.write(process.argv[1], JSON.stringify(p, null, 2) + "\n");
+          ' "$pkg/package.json"
+          bun -e '
+            const mod = await import(process.argv[1] + "/dist/index.js");
+            if (!mod.default) {
+              throw new Error("dist/index.js has no default plugin export");
+            }
+            console.log("exports:", Object.keys(mod).join(", "));
+          ' "$pkg"

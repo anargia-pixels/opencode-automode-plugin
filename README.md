@@ -1,6 +1,6 @@
 # opencode-automode
 
-[![npm](https://img.shields.io/npm/v/@anargia-pixels/opencode-automode)](https://www.npmjs.com/package/@anargia-pixels/opencode-automode)
+[![release](https://img.shields.io/github/v/release/anargia-pixels/opencode-automode-plugin)](https://github.com/anargia-pixels/opencode-automode-plugin/releases)
 [![CI](https://github.com/anargia-pixels/opencode-automode-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/anargia-pixels/opencode-automode-plugin/actions/workflows/ci.yml)
 
 Auto mode for [opencode](https://opencode.ai). Instead of asking you about
@@ -31,19 +31,23 @@ Requirements:
   pick with the `model` option. The plugin calls the model through opencode,
   so it needs no API key of its own.
 
-Install it with the opencode CLI:
+Install it from GitHub with the opencode CLI. No npm account or registry
+setup is needed:
 
 ```sh
-opencode plugin add @anargia-pixels/opencode-automode
+opencode plugin add github:anargia-pixels/opencode-automode-plugin#release
 opencode service restart
 ```
+
+The `release` branch always holds the latest built release. To pin a
+version, use its tag instead, such as `#dist-v0.1.0`.
 
 Or add it to `~/.config/opencode/opencode.json` yourself:
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugins": ["@anargia-pixels/opencode-automode"]
+  "plugins": ["github:anargia-pixels/opencode-automode-plugin#release"]
 }
 ```
 
@@ -209,8 +213,11 @@ before you release. To release:
 2. Publish a GitHub release whose tag is `v` plus that version, such as
    `gh release create v0.2.0 --generate-notes`.
 
-The `Publish` workflow then publishes to npm with trusted publishing, so no
-npm token is stored in GitHub, and npm shows a provenance attestation.
+The `Publish` workflow then builds the plugin and force-pushes it to the
+`release` branch, plus a `dist-vX.Y.Z` tag. opencode cannot run build steps
+when it installs from Git, so that branch holds the built `dist/` and a
+`package.json` without scripts or dev dependencies. You can also run the
+workflow by hand from the Actions tab.
 
 Layout:
 
