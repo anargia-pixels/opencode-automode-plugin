@@ -1,0 +1,51 @@
+{
+  "name": "@anargia-pixels/opencode-automode",
+  "version": "0.1.0",
+  "description": "Auto mode for opencode: a fast LLM classifier (DeepSeek V4.1 Flash on OpenCode Go) approves safe shell commands and blocks risky ones, so the agent keeps working without permission prompts.",
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "auto-mode",
+    "permissions",
+    "shell",
+    "safety",
+    "llm",
+    "deepseek"
+  ],
+  "homepage": "https://github.com/anargia-pixels/opencode-automode-plugin#readme",
+  "bugs": "https://github.com/anargia-pixels/opencode-automode-plugin/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anargia-pixels/opencode-automode-plugin.git"
+  },
+  "license": "MIT",
+  "author": "anargia-pixels",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "peerDependencies": {
+    "@opencode/plugin": ">=2.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@opencode/plugin": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
