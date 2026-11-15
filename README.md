@@ -41,7 +41,9 @@ opencode service restart
 ```
 
 The `release` branch always holds the latest built release. To pin a
-version, use its tag instead, such as `#dist-v0.2.0`.
+version, use its tag instead, such as `#dist-v0.2.0`. opencode caches the
+download, so to update, see
+[An update does not show up](#troubleshooting).
 
 Or add it to `~/.config/opencode/opencode.json` yourself:
 
@@ -342,6 +344,17 @@ attacks by design, so check your provider's content policy before you pick a
 - **You still get prompts.** opencode reads plugins at server start. Run
   `opencode service restart`, and check that no older opencode server is
   still running.
+- **An update does not show up.** opencode caches plugins installed from
+  GitHub and does not fetch the `release` branch again on its own. After a new
+  release, delete the cached copy and restart opencode:
+
+  ```sh
+  rm -rf ~/.cache/opencode/npm/git-opencode-automode-plugin-*
+  opencode service restart
+  ```
+
+  To check which version loaded, set `logFile`: the "Auto mode command guard
+  active" line shows the settings in use.
 - **See what it decided.** opencode does not show plugin output in its log.
   Set `logFile`, then read the file: each line has the action, the decision,
   the stage, the reason, and the time it took.
